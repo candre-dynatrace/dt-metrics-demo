@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dt-metrics-demo
+  labels:
+    app: dt-metrics-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dt-metrics-demo
+  template:
+    metadata:
+      labels:
+        app: dt-metrics-demo
+    spec:
+      containers:
+        - name: dt-metrics-demo
+          image: dt-metrics-demo:latest
+          imagePullPolicy: Always
+
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            periodSeconds: 10
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+
+          env:
+            - name: DT_TENANT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: dt-secrets
+                  key: tenant-url
+
+            - name: DT_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: dt-secrets
+                  key: dt-api-token
+
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector.monitoring.svc.cluster.local:4318"
+
+            - name: SYSLOG_HOST
+              value: "dt-log-ingest.monitoring.svc.cluster.local"
+            - name: SYSLOG_PORT
+              value: "1514"
+
+            - name: PROMETHEUS_PORT
+              value: "9496"
+            - name: METRICS_INTERVAL_S
+              value: "1"
+            - name: APP_NAME
+              value: "dt-metrics-demo"
+            - name: HOST_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dt-metrics-demo
+spec:
+  selector:
+    app: dt-metrics-demo
+  ports:
+    - name: prometheus
+      port: 9496
+      targetPort: 9496
+      protocol: TCP
+    - name: health
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+  type: ClusterIP

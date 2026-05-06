@@ -1,10 +1,32 @@
 package com.dtmetrics.demo
 
-import zio.{Unsafe, _}
-import com.sun.net.httpserver.{HttpExchange, HttpServer, HttpHandler}
+import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
+import zio.{Unsafe, *}
+
 import java.net.{DatagramSocket, InetSocketAddress}
 
 object Main extends ZIOAppDefault {
+
+  private def respond(he: HttpExchange, body: Array[Byte], contentType: String): Unit = {
+    he.getResponseHeaders.set("Content-Type", contentType)
+    he.sendResponseHeaders(200, body.length)
+    he.getResponseBody.write(body)
+    he.getResponseBody.close()
+  }
+
+  private def staticHandler(body: String): HttpHandler = { (he: HttpExchange) =>
+    respond(he, body.getBytes("UTF-8"), "application/json")
+  }
+
+  private def prometheusHandler(tickRef: Ref[Tick]): HttpHandler = { (he: HttpExchange) =>
+    Unsafe.unsafe { implicit u =>
+      Runtime.default.unsafe.run {
+        tickRef.get.flatMap { tick =>
+          ZIO.attempt(respond(he, tick.toPrometheus.getBytes("UTF-8"), "text/plain; version=0.0.4"))
+        }
+      }
+    }
+  }
 
   private def startHttpServer(port: Int, routes: List[(String, HttpHandler)]): ZIO[Any, Throwable, Unit] =
     ZIO.attempt {
@@ -15,7 +37,7 @@ object Main extends ZIOAppDefault {
       server.start()
     } *> ZIO.logInfo(s"HTTP server started on port $port")
 
-  private val appRun: ZIO[Any, Throwable, Unit] =
+  def run: ZIO[Any, Throwable, Unit] =
     ZIO.scoped {
       for {
         sock    <- ZIO.acquireRelease(ZIO.attempt(new DatagramSocket()))(s => ZIO.succeed(s.close()))
@@ -23,35 +45,14 @@ object Main extends ZIOAppDefault {
         gauges  <- OtelClient.scoped(config)
         tickRef <- Ref.make(Tick(0.0, 0.0, 0.0))
 
-        _ <- startHttpServer(config.httpPort, List(
-          config.prometheusPath -> { (he: HttpExchange) =>
-            Unsafe.unsafe { implicit u =>
-              Runtime.default.unsafe.run {
-                tickRef.get.flatMap { tick =>
-                  ZIO.attempt {
-                    val body = tick.toPrometheus.getBytes("UTF-8")
-                    he.getResponseHeaders.set("Content-Type", "text/plain; version=0.0.4")
-                    he.sendResponseHeaders(200, body.length)
-                    he.getResponseBody.write(body)
-                    he.getResponseBody.close()
-                  }
-                }
-              }
-            }
-          },
-          "/health/ready" -> { (he: HttpExchange) =>
-            val b = """{"status":"ready"}""".getBytes
-            he.sendResponseHeaders(200, b.length)
-            he.getResponseBody.write(b)
-            he.close()
-          },
-          "/health/live" -> { (he: HttpExchange) =>
-            val b = """{"status":"alive"}""".getBytes
-            he.sendResponseHeaders(200, b.length)
-            he.getResponseBody.write(b)
-            he.close()
-          }
-        ))
+        _ <- startHttpServer(
+          config.httpPort,
+          List(
+            config.prometheusPath -> prometheusHandler(tickRef),
+            "/health/ready"       -> staticHandler("""{"status":"ready"}"""),
+            "/health/live"        -> staticHandler("""{"status":"alive"}""")
+          )
+        )
         _ <- ZIO.logInfo(s"Listening on http://0.0.0.0:${config.httpPort}")
         _ <- ZIO.logInfo(s"  Prometheus : ${config.prometheusPath}")
         _ <- ZIO.logInfo(s"  Health     : /health/{ready, live}")
@@ -71,7 +72,4 @@ object Main extends ZIOAppDefault {
 
       } yield ()
     }
-
-  def run: ZIO[Any, Throwable, ExitCode] =
-    appRun.as(ExitCode.success)
 }

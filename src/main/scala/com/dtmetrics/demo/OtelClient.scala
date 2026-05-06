@@ -60,9 +60,9 @@ object OtelClient {
 
     val meter  = sdk.getMeter(config.serviceName)
     val gauges = OtelGauges(
-      cpu = meter.gaugeBuilder("cn_app_cpu").setDescription("Application CPU usage percent").setUnit("%").build(),
-      mem = meter.gaugeBuilder("cn_app_mem").setDescription("Application memory usage percent").setUnit("%").build(),
-      lat = meter.gaugeBuilder("cn_app_lat").setDescription("Application latency").setUnit("ms").build()
+      cpu = meter.gaugeBuilder("cn_otel_cpu").setDescription("Application CPU usage percent").setUnit("%").build(),
+      mem = meter.gaugeBuilder("cn_otel_mem").setDescription("Application memory usage percent").setUnit("%").build(),
+      lat = meter.gaugeBuilder("cn_otel_lat").setDescription("Application latency").setUnit("ms").build()
     )
 
     (sdk, gauges)

@@ -5,6 +5,8 @@ ships them to Dynatrace via four independent ingestion channels simultaneously. 
 demonstrate how Dynatrace can receive observability data from a variety of sources in a single running
 service.
 
+> **Running this as a customer demo?** See the [Demo Guide](docs/demo-guide.md) for the full setup walkthrough, architecture diagram, collector configuration, and DQL queries.
+
 ## How it works
 
 Every `METRICS_INTERVAL_S` seconds the app samples three Gaussian-distributed metrics:
@@ -33,18 +35,14 @@ independently visible in Dynatrace.
 - sbt 1.x
 - Docker (for containerised deployment)
 - A Dynatrace tenant
-- An OTEL collector reachable from the app, configured to forward to Dynatrace
-- A syslog receiver reachable from the app (e.g. Dynatrace ActiveGate with syslog ingest, or Fluent Bit)
+- A Dynatrace OTEL Collector reachable from the app, configured to forward to Dynatrace (handles OTLP metrics, OTLP logs, syslog, and Prometheus scraping)
 
 ## Configuration
 
-All configuration is via environment variables. `DT_TENANT_URL` and `DT_API_TOKEN` are required;
-everything else has a default.
+All configuration is via environment variables. Everything has a sensible default when running locally without a collector.
 
 | Variable                      | Required | Default                 | Description                                                                             |
 |-------------------------------|----------|-------------------------|-----------------------------------------------------------------------------------------|
-| `DT_TENANT_URL`               | Yes      | —                       | Dynatrace tenant hostname, e.g. `abc12345.live.dynatrace.com`                           |
-| `DT_API_TOKEN`                | Yes      | —                       | Dynatrace API token with metrics ingest scope                                           |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | No       | `http://localhost:4318` | Base URL of the OTEL collector; `/v1/metrics` and `/v1/logs` are appended automatically |
 | `SYSLOG_HOST`                 | No       | `127.0.0.1`             | Hostname or IP of the syslog receiver                                                   |
 | `SYSLOG_PORT`                 | No       | `1514`                  | UDP port of the syslog receiver                                                         |
@@ -65,9 +63,6 @@ Produces `target/scala-3.4.2/dtmetrics-demo-assembly-0.1.0.jar`.
 ## Running locally
 
 ```bash
-export DT_TENANT_URL=abc12345.live.dynatrace.com
-export DT_API_TOKEN=dt0c01.XXXX...
-
 sbt run
 ```
 
@@ -91,8 +86,6 @@ Run it:
 
 ```bash
 docker run --rm \
-  -e DT_TENANT_URL=abc12345.live.dynatrace.com \
-  -e DT_API_TOKEN=dt0c01.XXXX... \
   -e OTEL_EXPORTER_OTLP_ENDPOINT=http://host.docker.internal:4318 \
   -e SYSLOG_HOST=host.docker.internal \
   -p 8080:8080 \
@@ -101,27 +94,19 @@ docker run --rm \
 
 ## Kubernetes
 
-Create the secret first:
+See the [Demo Guide](docs/demo-guide.md) for the full Kubernetes setup including the OTEL collector, secrets, and manifests.
+
+Quick reference — create the API token secret and apply all manifests:
 
 ```bash
 kubectl create secret generic dt-secrets \
-  --from-literal=tenant-url=abc12345.live.dynatrace.com \
-  --from-literal=dt-api-token=dt0c01.XXXX...
+  --from-literal=dt-api-token=dt0c01.XXXX... \
+  -n dt-demo
+
+kubectl apply -f k8s/
 ```
 
-Then apply the manifests:
-
-```bash
-kubectl apply -f k8s/deployment.yaml
-```
-
-The deployment expects:
-
-- An OTEL collector Service named `otel-collector` in the `monitoring` namespace, accepting OTLP HTTP on port 4318
-- A syslog receiver Service named `dt-log-ingest` in the `monitoring` namespace, accepting UDP RFC 5424 on port 1514
-
-The app is exposed within the cluster as a `ClusterIP` Service on port 8080. To scrape Prometheus
-metrics from outside the cluster, configure your scraper to target that Service.
+The stack expects Kubernetes (tested on Rancher Desktop / k3s). All components run in the `dt-demo` namespace.
 
 ## HTTP endpoints
 
@@ -134,9 +119,9 @@ metrics from outside the cluster, configure your scraper to target that Service.
 
 ## Finding the metrics in Dynatrace
 
-| Dynatrace feature | What to look for                                                                                                    |
-|-------------------|---------------------------------------------------------------------------------------------------------------------|
-| Metrics explorer  | `cn_otel_cpu`, `cn_otel_mem`, `cn_otel_lat` (OTEL push)                                                             |
-| Metrics explorer  | `cn_prom_app_cpu`, `cn_prom_app_mem`, `cn_prom_app_lat` (Prometheus scrape, once ActiveGate scraping is configured) |
-| Log viewer        | Messages containing `cn_otel_log_cpu`, `cn_otel_log_mem`, `cn_otel_log_lat` (OTEL log ingest)                       |
-| Log viewer        | Messages containing `cn_syslog_cpu`, `cn_syslog_mem`, `cn_syslog_lat` (syslog ingest)                               |
+| Dynatrace feature | What to look for                                                              |
+|-------------------|-------------------------------------------------------------------------------|
+| Metrics explorer  | `cn_otel_cpu`, `cn_otel_mem`, `cn_otel_lat` (OTEL push)                      |
+| Metrics explorer  | `cn_prom_app_cpu`, `cn_prom_app_mem`, `cn_prom_app_lat` (Prometheus scrape)  |
+| Log viewer / DQL  | Messages containing `cn_otel_log_*` (OTEL log ingest)                        |
+| Log viewer / DQL  | Messages containing `cn_syslog_*` (syslog ingest)                            |

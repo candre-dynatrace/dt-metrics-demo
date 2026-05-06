@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: dt-demo
+  labels:
+    app: otel-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      containers:
+        - name: otel-collector
+          image: ghcr.io/dynatrace/dynatrace-otel-collector/dynatrace-otel-collector:latest
+          args:
+            - "--config=/etc/otelcol/config.yaml"
+          env:
+            - name: DT_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: dt-secrets
+                  key: dt-api-token
+          ports:
+            - containerPort: 4318
+              protocol: TCP
+            - containerPort: 1514
+              protocol: UDP
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otelcol
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+      volumes:
+        - name: config
+          configMap:
+            name: otel-collector-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: dt-demo
+spec:
+  selector:
+    app: otel-collector
+  ports:
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dt-log-ingest
+  namespace: dt-demo
+spec:
+  selector:
+    app: otel-collector
+  ports:
+    - name: syslog-udp
+      port: 1514
+      targetPort: 1514
+      protocol: UDP
+  type: ClusterIP

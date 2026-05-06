@@ -1,4 +1,8 @@
 FROM eclipse-temurin:21-jdk AS builder
+RUN apt-get update && apt-get install -y curl && \
+    curl -fL https://github.com/sbt/sbt/releases/download/v1.11.5/sbt-1.11.5.tgz | tar xzf - -C /usr/local && \
+    ln -s /usr/local/sbt/bin/sbt /usr/local/bin/sbt && \
+    rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY project ./project
 COPY build.sbt .

@@ -2,11 +2,15 @@ package com.dtmetrics.demo
 
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import zio.{Unsafe, *}
+import zio.logging.backend.SLF4J
 
 import java.net.{DatagramSocket, InetSocketAddress}
 import java.nio.charset.StandardCharsets
 
 object Main extends ZIOAppDefault {
+
+  override val bootstrap: ZLayer[Any, Nothing, Unit] =
+    Runtime.removeDefaultLoggers >>> SLF4J.slf4j
 
   private def respond(he: HttpExchange, body: Array[Byte], contentType: String): Unit = {
     he.getResponseHeaders.set("Content-Type", contentType)
@@ -92,7 +96,7 @@ object Main extends ZIOAppDefault {
           .flatMap { rawTick =>
             for {
               trigger <- triggerRef.get
-              now     <- ZIO.succeed(java.time.Instant.now())
+              now     <- Clock.instant
               mem <- trigger match {
                 case ProblemTrigger.MemPressure(exp) if now.isBefore(exp) =>
                   MetricGenerator.memUnderPressure

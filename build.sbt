@@ -30,8 +30,9 @@ lazy val root = (project in file("."))
     Test / fork          := true,
     testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
     assembly / assemblyMergeStrategy := {
-      case PathList("META-INF", _*) => MergeStrategy.discard
-      case _                        => MergeStrategy.first
+      case PathList("META-INF", "services", _*) => MergeStrategy.concat
+      case PathList("META-INF", _*)             => MergeStrategy.discard
+      case _                                    => MergeStrategy.first
     },
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio" % "2.1.25",

@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: dt-metrics-demo
+  namespace: dt-demo
   labels:
     app: dt-metrics-demo
 spec:
@@ -17,7 +18,7 @@ spec:
       containers:
         - name: dt-metrics-demo
           image: dt-metrics-demo:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
 
           readinessProbe:
             httpGet:
@@ -39,23 +40,11 @@ spec:
               memory: "256Mi"
 
           env:
-            - name: DT_TENANT_URL
-              valueFrom:
-                secretKeyRef:
-                  name: dt-secrets
-                  key: tenant-url
-
-            - name: DT_API_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: dt-secrets
-                  key: dt-api-token
-
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: "http://otel-collector.monitoring.svc.cluster.local:4318"
+              value: "http://otel-collector.dt-demo.svc.cluster.local:4318"
 
             - name: SYSLOG_HOST
-              value: "dt-log-ingest.monitoring.svc.cluster.local"
+              value: "dt-log-ingest.dt-demo.svc.cluster.local"
             - name: SYSLOG_PORT
               value: "1514"
 
@@ -69,12 +58,12 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: dt-metrics-demo
+  namespace: dt-demo
 spec:
   selector:
     app: dt-metrics-demo

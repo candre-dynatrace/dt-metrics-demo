@@ -4,8 +4,13 @@ import zio._
 import java.net.{DatagramSocket, InetAddress, DatagramPacket}
 import java.nio.charset.StandardCharsets
 import java.time.Instant
+import java.time.format.DateTimeFormatter
+import java.time.ZoneOffset
 
 object LogExporter {
+
+  private val rfc5424Ts =
+    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSX").withZone(ZoneOffset.UTC)
 
   /** Emit log to Syslog UDP + OTel log collector (logs for demo). */
   def emit(tick: Tick, config: DemoConfig, sock: DatagramSocket): ZIO[Any, Throwable, Unit] =
@@ -16,7 +21,7 @@ object LogExporter {
       )
       _ <- ZIO
         .attempt {
-          val ts = Instant.now().toString
+          val ts = rfc5424Ts.format(Instant.now())
           val msg =
             s"[INFO] tick: cn_syslog_cpu=${tick.cpu} cn_syslog_mem=${tick.mem} cn_syslog_lat=${tick.lat} svc=${config.serviceName}"
           val syslog = s"<14>1 $ts ${config.hostName} ${config.serviceName} ${config.serviceName} 1 - - $msg"

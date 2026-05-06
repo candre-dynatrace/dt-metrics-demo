@@ -16,4 +16,7 @@ object MetricGenerator {
       mem <- Random.nextGaussian.map(g => (65.0 + 10.0 * g).max(0.0).min(100.0))
       lat <- Random.nextGaussian.map(g => (140.0 + 35.0 * g).max(0.0))
     } yield Tick(cpu, mem, lat)
+
+  def memUnderPressure: ZIO[Any, Nothing, Double] =
+    Random.nextGaussian.map(g => (97.5 + 1.5 * g).max(95.0).min(100.0))
 }

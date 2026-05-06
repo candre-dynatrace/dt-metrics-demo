@@ -32,7 +32,8 @@ object DemoConfig {
       httpPort = intOr("HTTP_PORT", 8080),
       prometheusPath = str("PROMETHEUS_PATH", "/metrics"),
       otlpEndpoint = str("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318"),
-      dtTenantUrl = "https://" + tenantUrl.stripPrefix("https://").stripPrefix("http://").stripSuffix("/") + "/api/v2/metrics/otlp",
+      dtTenantUrl =
+        "https://" + tenantUrl.stripPrefix("https://").stripPrefix("http://").stripSuffix("/") + "/api/v2/metrics/otlp",
       dtApiToken = token,
       syslogHost = str("SYSLOG_HOST", "127.0.0.1"),
       syslogPort = intOr("SYSLOG_PORT", 1514),

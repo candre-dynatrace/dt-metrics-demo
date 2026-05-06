@@ -125,11 +125,12 @@ metrics from outside the cluster, configure your scraper to target that Service.
 
 ## HTTP endpoints
 
-| Path                                  | Description                                     |
-|---------------------------------------|-------------------------------------------------|
-| `GET /metrics` (or `PROMETHEUS_PATH`) | Prometheus text format — `cn_prom_app_*` gauges |
-| `GET /health/ready`                   | Readiness probe — returns `{"status":"ready"}`  |
-| `GET /health/live`                    | Liveness probe — returns `{"status":"alive"}`   |
+| Path                                  | Description                                                                               |
+|---------------------------------------|-------------------------------------------------------------------------------------------|
+| `GET /metrics` (or `PROMETHEUS_PATH`) | Prometheus text format — `cn_prom_app_*` gauges                                           |
+| `GET /trigger/memory?duration=<min>`  | Override memory metric to ~95–100% for `duration` minutes (default 10); ignored if active |
+| `GET /health/ready`                   | Readiness probe — returns `{"status":"ready"}`                                            |
+| `GET /health/live`                    | Liveness probe — returns `{"status":"alive"}`                                             |
 
 ## Finding the metrics in Dynatrace
 

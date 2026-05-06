@@ -4,8 +4,16 @@
         <encoder pattern="[%thread] %-5level %logger{36} - %msg%n" />
     </appender>
 
+    <!-- Forwards log records to the OTEL collector via OTLP (/v1/logs).
+         Wired to the SDK instance at startup via OpenTelemetryAppender.install(sdk). -->
+    <appender name="OTEL" class="io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender">
+        <captureExperimentalAttributes>true</captureExperimentalAttributes>
+        <captureCodeAttributes>true</captureCodeAttributes>
+    </appender>
+
     <logger name="com.dtmetrics" level="DEBUG" />
     <root level="INFO">
         <appender-ref ref="CONSOLE" />
+        <appender-ref ref="OTEL" />
     </root>
 </configuration>

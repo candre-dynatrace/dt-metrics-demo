@@ -11,6 +11,14 @@ val zioLogging = "dev.zio"       %% "zio-logging-slf4j" % "2.5.0"
 val logback    = "ch.qos.logback" % "logback-classic"   % "1.5.18"
 val julToSlf4j = "org.slf4j"      % "jul-to-slf4j"      % "2.0.16"
 
+// OpenTelemetry — metrics + logs only (no tracing), versions from FunKlaw
+val otelVersion      = "1.44.1"
+val otelInstrVersion = "2.11.0-alpha"
+val otelApi          = "io.opentelemetry"                 % "opentelemetry-api"                  % otelVersion
+val otelSdk          = "io.opentelemetry"                 % "opentelemetry-sdk"                  % otelVersion
+val otelOtlp         = "io.opentelemetry"                 % "opentelemetry-exporter-otlp"        % otelVersion
+val otelLogback      = "io.opentelemetry.instrumentation" % "opentelemetry-logback-appender-1.0" % otelInstrVersion
+
 lazy val root = (project in file("."))
   .enablePlugins(BuildInfoPlugin)
   .settings(
@@ -29,7 +37,11 @@ lazy val root = (project in file("."))
       "dev.zio" %% "zio" % "2.1.25",
       zioLogging,
       logback,
-      julToSlf4j
+      julToSlf4j,
+      otelApi,
+      otelSdk,
+      otelOtlp,
+      otelLogback
     )
   )
 

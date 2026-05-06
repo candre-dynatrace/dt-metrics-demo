@@ -12,16 +12,15 @@ object LogExporter {
     for {
       _ <- ZIO.logInfo(s"[OTEL-LOG] to ${config.otlpEndpoint}")
       _ <- ZIO.logInfo(s"[OTEL-LOG] tick: cpu=${tick.cpu} mem=${tick.mem} lat=${tick.lat} svc=${config.serviceName}")
-      syslogOk <- ZIO.attempt {
+      _ <- ZIO.attempt {
         val ts     = Instant.now().toString
         val msg    = s"[INFO] tick: cpu=${tick.cpu} mem=${tick.mem} lat=${tick.lat} svc=${config.serviceName}"
         val syslog = s"<14>1 $ts ${config.hostName} ${config.serviceName} ${config.serviceName} 1 - - $msg"
         val bytes  = syslog.getBytes(StandardCharsets.UTF_8)
         sock.send(new DatagramPacket(bytes, bytes.length, InetAddress.getByName(config.syslogHost), config.syslogPort))
-        true
-      }
-      _ <-
-        if (syslogOk) ZIO.logInfo(s"[SYSLOG] -> ${config.syslogHost}:${config.syslogPort}")
-        else ZIO.logError(s"[SYSLOG] failed to send to ${config.syslogHost}:${config.syslogPort}")
+      }.foldZIO(
+        err => ZIO.logError(s"[SYSLOG] failed to send to ${config.syslogHost}:${config.syslogPort}: ${err.getMessage}"),
+        _   => ZIO.logInfo(s"[SYSLOG] -> ${config.syslogHost}:${config.syslogPort}")
+      )
     } yield ()
 }

@@ -59,8 +59,8 @@ spec:
             - name: SYSLOG_PORT
               value: "1514"
 
-            - name: PROMETHEUS_PORT
-              value: "9496"
+            - name: HTTP_PORT
+              value: "8080"
             - name: METRICS_INTERVAL_S
               value: "1"
             - name: APP_NAME
@@ -79,11 +79,7 @@ spec:
   selector:
     app: dt-metrics-demo
   ports:
-    - name: prometheus
-      port: 9496
-      targetPort: 9496
-      protocol: TCP
-    - name: health
+    - name: http
       port: 8080
       targetPort: 8080
       protocol: TCP

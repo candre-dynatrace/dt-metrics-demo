@@ -4,6 +4,7 @@ import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import zio.{Unsafe, *}
 
 import java.net.{DatagramSocket, InetSocketAddress}
+import java.nio.charset.StandardCharsets
 
 object Main extends ZIOAppDefault {
 
@@ -15,14 +16,14 @@ object Main extends ZIOAppDefault {
   }
 
   private def staticHandler(body: String): HttpHandler = { (he: HttpExchange) =>
-    respond(he, body.getBytes("UTF-8"), "application/json")
+    respond(he, body.getBytes(StandardCharsets.UTF_8), "application/json")
   }
 
   private def prometheusHandler(tickRef: Ref[Tick]): HttpHandler = { (he: HttpExchange) =>
     Unsafe.unsafe { implicit u =>
       Runtime.default.unsafe.run {
         tickRef.get.flatMap { tick =>
-          ZIO.attempt(respond(he, tick.toPrometheus.getBytes("UTF-8"), "text/plain; version=0.0.4"))
+          ZIO.attempt(respond(he, tick.toPrometheus.getBytes(StandardCharsets.UTF_8), "text/plain; version=0.0.4"))
         }
       }
     }
@@ -48,7 +49,7 @@ object Main extends ZIOAppDefault {
               val exp = now.plusSeconds(minutes.toLong * 60)
               (s"""{"status":"triggered","expiresAt":"$exp"}""", ProblemTrigger.MemPressure(exp))
           }
-          _ <- ZIO.attempt(respond(he, body.getBytes("UTF-8"), "application/json"))
+          _ <- ZIO.attempt(respond(he, body.getBytes(StandardCharsets.UTF_8), "application/json"))
         } yield ()
       }
     }

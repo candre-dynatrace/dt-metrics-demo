@@ -20,45 +20,57 @@ final case class OtelGauges(cpu: DoubleGauge, mem: DoubleGauge, lat: DoubleGauge
 object OtelClient {
 
   def scoped(config: DemoConfig): ZIO[Scope, Throwable, OtelGauges] =
-    ZIO.acquireRelease(ZIO.attempt(build(config))) { case (sdk, _) =>
-      ZIO.succeed(sdk.close())
-    }.map(_._2)
+    ZIO
+      .acquireRelease(ZIO.attempt(build(config))) { case (sdk, _) =>
+        ZIO.succeed(sdk.close())
+      }
+      .map(_._2)
 
   private def build(config: DemoConfig): (OpenTelemetrySdk, OtelGauges) = {
     val resource = Resource.getDefault.merge(
       Resource.create(Attributes.of(AttributeKey.stringKey("service.name"), config.serviceName))
     )
 
-    val meterProvider = SdkMeterProvider.builder()
+    val meterProvider = SdkMeterProvider
+      .builder()
       .registerMetricReader(
-        PeriodicMetricReader.builder(
-          OtlpHttpMetricExporter.builder()
-            .setEndpoint(s"${config.otlpEndpoint}/v1/metrics")
-            .build()
-        ).setInterval(JDuration.ofSeconds(30)).build()
+        PeriodicMetricReader
+          .builder(
+            OtlpHttpMetricExporter
+              .builder()
+              .setEndpoint(s"${config.otlpEndpoint}/v1/metrics")
+              .build()
+          )
+          .setInterval(JDuration.ofSeconds(30))
+          .build()
       )
       .setResource(resource)
       .build()
 
-    val loggerProvider = SdkLoggerProvider.builder()
+    val loggerProvider = SdkLoggerProvider
+      .builder()
       .addLogRecordProcessor(
-        BatchLogRecordProcessor.builder(
-          OtlpHttpLogRecordExporter.builder()
-            .setEndpoint(s"${config.otlpEndpoint}/v1/logs")
-            .build()
-        ).build()
+        BatchLogRecordProcessor
+          .builder(
+            OtlpHttpLogRecordExporter
+              .builder()
+              .setEndpoint(s"${config.otlpEndpoint}/v1/logs")
+              .build()
+          )
+          .build()
       )
       .setResource(resource)
       .build()
 
-    val sdk = OpenTelemetrySdk.builder()
+    val sdk = OpenTelemetrySdk
+      .builder()
       .setMeterProvider(meterProvider)
       .setLoggerProvider(loggerProvider)
       .build()
 
     OpenTelemetryAppender.install(sdk)
 
-    val meter  = sdk.getMeter(config.serviceName)
+    val meter = sdk.getMeter(config.serviceName)
     val gauges = OtelGauges(
       cpu = meter.gaugeBuilder("cn_otel_cpu").setDescription("Application CPU usage percent").setUnit("%").build(),
       mem = meter.gaugeBuilder("cn_otel_mem").setDescription("Application memory usage percent").setUnit("%").build(),
